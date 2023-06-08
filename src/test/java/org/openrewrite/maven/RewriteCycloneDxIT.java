@@ -4,6 +4,12 @@ import com.soebes.itf.jupiter.extension.*;
 import com.soebes.itf.jupiter.maven.MavenExecutionResult;
 import org.junit.jupiter.api.Disabled;
 
+import java.io.IOException;
+import java.nio.charset.Charset;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+
 import static com.soebes.itf.extension.assertj.MavenITAssertions.assertThat;
 
 @MavenJupiterExtension
@@ -78,5 +84,26 @@ class RewriteCycloneDxIT {
         assertThat(result).out().warn().isEmpty();
     }
 
+    @MavenTest
+    void pom_packaging(MavenExecutionResult result) throws IOException {
+        assertThat(result)
+                .isSuccessful()
+                .project()
+                .hasTarget()
+                .withFile("pom_packaging-1.0-cyclonedx.xml")
+                .exists();
 
+        Path sbomPath = Paths.get("target/maven-it/org/openrewrite/maven/RewriteCycloneDxIT/pom_packaging/project/target/pom_packaging-1.0-cyclonedx.xml");
+        byte[] xmlBytes = Files.readAllBytes(sbomPath);
+        String sbomContents = new String(xmlBytes, Charset.defaultCharset());
+        String expected = "        <component bom-ref=\"pkg:maven/org.example/pom_packaging@1.0?type=pom\" type=\"library\">\n" +
+                "            <group>org.example</group>\n" +
+                "            <name>pom_packaging</name>\n" +
+                "            <version>1.0</version>\n" +
+                "            <scope>required</scope>\n" +
+                "            <purl>pkg:maven/org.example/pom_packaging@1.0?type=pom</purl>\n" +
+                "        </component>";
+
+        assertThat(sbomContents).contains(expected);
+    }
 }
